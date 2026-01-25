@@ -14,10 +14,6 @@ COPY . .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir --pre .
 
-# HOTFIX: The httpx-sse package (used by MCP) is incompatible with httpx 0.28.0.
-# This sed command patches the code to use HTTPError instead of the removed TransportError.
-RUN sed -i 's/TransportError/HTTPError/g' /usr/local/lib/python3.12/site-packages/httpx_sse/_exceptions.py
-
 # Expose the default port for HTTP transport
 EXPOSE 8000
 
