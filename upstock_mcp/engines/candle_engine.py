@@ -29,7 +29,50 @@ class CandleEngine:
         # We usually want oldest first for TA.
         df = df.sort_values('timestamp', ascending=True).reset_index(drop=True)
         
+        # Convert timestamp to string to avoid serialization issues with pandas Timestamp
+        df['timestamp'] = df['timestamp'].dt.strftime('%Y-%m-%dT%H:%M:%S')
+        
         return df
+
+    @staticmethod
+    def resample_candles(df: pd.DataFrame, interval: str) -> pd.DataFrame:
+        """
+        Resample 1-minute candles to a larger interval (e.g., '5min', '15min').
+        Requires a DataFrame with a DatetimeIndex.
+        """
+        if df.empty or len(df) < 2:
+            return df
+            
+        # Set timestamp as index for resampling
+        df = df.set_index('timestamp')
+        
+        # Mapping common MCP intervals to pandas offset aliases
+        # 1minute -> 1min, 5minute -> 5min, etc.
+        resample_map = {
+            "1minute": "1min",
+            "3minute": "3min",
+            "5minute": "5min",
+            "10minute": "10min",
+            "15minute": "15min",
+            "30minute": "30min",
+            "1hour": "1H",
+            "1day": "1D"
+        }
+        
+        rule = resample_map.get(interval, interval)
+        if "minute" in rule: rule = rule.replace("minute", "min")
+        
+        # Resample logic
+        resampled = df.resample(rule).agg({
+            'open': 'first',
+            'high': 'max',
+            'low': 'min',
+            'close': 'last',
+            'volume': 'sum',
+            'oi': 'last'
+        }).dropna()
+        
+        return resampled.reset_index()
 
     @staticmethod
     def get_latest_candle(df: pd.DataFrame) -> Dict:

@@ -2,8 +2,6 @@
 
 A **Model Context Protocol (MCP)** server that integrates with the **Upstox Trading API**, enabling AI agents to securely access Indian stock market data, perform technical analysis, and view account information in **read-only mode**.
 
-Built using **FastMCP**, the production-grade Python framework for MCP servers.
-
 ---
 
 ## 🚀 Features
@@ -30,10 +28,6 @@ Built using **FastMCP**, the production-grade Python framework for MCP servers.
 - Tool-first architecture
 - Supports Claude Desktop, Cursor, and custom agents
 
-### 🔌 Transports
-- **STDIO** (Claude Desktop, CLI agents)
-- **HTTP / SSE** (Cursor, web agents)
-
 ---
 
 ## ⚠️ Safety Notice
@@ -47,22 +41,12 @@ Built using **FastMCP**, the production-grade Python framework for MCP servers.
 
 ---
 
-## 🛠️ Tech Stack
-
-- Python 3.10+
-- [FastMCP](https://pypi.org/project/fastmcp/)
-- Upstox Python SDK
-- Pandas + Pandas-TA
-- FastAPI (via FastMCP HTTP transport)
-
----
-
 ## 📦 Installation
 
 ### 1️⃣ Clone Repository
 ```bash
-git clone https://github.com/your-username/mcp-server-upstox.git
-cd mcp-server-upstox
+git clone https://github.com/your-username/upstox-mcp.git
+cd upstox-mcp
 ```
 
 ### 2️⃣ Install Dependencies
@@ -85,24 +69,35 @@ UPSTOX_ACCESS_TOKEN=your_access_token_here
 
 ## ▶️ Running the Server
 
-The best way to run the server is using the `fastmcp` CLI, which handles transport switching automatically.
+Once installed, use the `upstox-mcp` command to start the server.
 
-### Option A — Standard IO (Default)
-Best for Claude Desktop or local agent usage.
+### Option A — Standard IO (for Claude Desktop)
+Default mode for local agent usage.
 ```bash
-fastmcp run upstock_mcp/server.py
+upstox-mcp
 ```
 
-### Option B — HTTP / SSE (Streamable)
-Recommended for Cursor, web agents, or remote MCP clients.
+### Option B — HTTP (Streamable)
+Recommended for Cursor or remote MCP clients.
 ```bash
-fastmcp run upstock_mcp/server.py --transport http
+upstox-mcp --transport http
 ```
 
-*Note: The `--transport` flag defaults to `stdio`. Other supported transports include `http`, `sse`, and `inspector` (for the built-in web UI).*
+### Option C — Deployment via Docker
+Run the server in a containerized environment.
 
-Server will be available at:
-`http://localhost:8000/mcp`
+1. **Using Docker Compose (Recommended)**:
+   ```bash
+   docker-compose up -d
+   ```
+
+2. **Using Docker CLI**:
+   ```bash
+   docker build -t upstox-mcp .
+   docker run -d -p 8000:8000 --env-file .env upstox-mcp
+   ```
+
+Server will be available at: `http://localhost:8000/mcp`
 
 ---
 
@@ -115,8 +110,7 @@ Server will be available at:
 {
   "mcpServers": {
     "upstox": {
-      "command": "python3",
-      "args": ["/absolute/path/to/mcp-server-upstox/upstock_mcp/server.py"],
+      "command": "upstox-mcp",
       "env": {
         "UPSTOX_ACCESS_TOKEN": "your_access_token_here"
       }
@@ -124,8 +118,9 @@ Server will be available at:
   }
 }
 ```
+*Note: Ensure the directory containing `upstox-mcp` is in your PATH.*
 
-### Cursor (HTTP / SSE)
+### Cursor (HTTP)
 Open Cursor Settings → Features → MCP. Add a new server:
 - **Name**: Upstox
 - **Type**: http
@@ -173,7 +168,7 @@ AI Agent (Claude / Cursor) ↓ MCP ↓ FastMCP Server ↓ Upstox API (Read-Only)
 MIT License
 
 ## 🙌 Credits
-- **FastMCP** — Production MCP framework
+- **FastMCP** —MCP framework
 - **Upstox** — Trading & market data API
 - **Pandas-TA** — Technical indicators
 

@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  upstox-mcp:
+    build: .
+    container_name: upstox-mcp
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - MCP_TRANSPORT=http
+    restart: unless-stopped
