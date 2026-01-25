@@ -1,5 +1,5 @@
-# Use official Python slim image
-FROM python:3.11-slim
+# Use official Python slim image (3.12+ required for new pandas-ta)
+FROM python:3.12-slim
 
 # Set working directory
 WORKDIR /app
@@ -10,8 +10,9 @@ RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
 # Copy the project files
 COPY . .
 
-# Install the package and its dependencies
-RUN pip install --no-cache-dir .
+# Upgrade pip and install the package
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir .
 
 # Expose the default port for HTTP transport
 EXPOSE 8000
