@@ -15,7 +15,7 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "uvloop>=0.19.0; sys_platform != 'win32'",
     "fastmcp>=2.14.0",
-    "httpx>=0.26.0"
+    "httpx>=0.26.0,<0.28.0"
 ]
 
 [project.scripts]
