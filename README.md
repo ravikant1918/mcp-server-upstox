@@ -307,14 +307,25 @@ For running the server remotely or in a separate process:
 | :--- | :--- | :--- |
 | **Market** | `market_get_live_quote` | Last Traded Price, OHLC, Volume |
 | **Market** | `market_search_instruments` | Search for trading symbols |
+| **Market** | `market_get_instrument_details` | Detailed instrument metadata |
 | **Market** | `market_get_historical_data` | Custom historical candle data |
 | **Market** | `market_get_intraday_candles` | Real-time intraday charts |
-| **Analysis** | `analysis_calculate_rsi` | Momentum analysis |
-| **Analysis** | `analysis_calculate_macd` | Trend & momentum |
-| **Analysis** | `analysis_calculate_adx` | Trend strength |
-| **Analysis** | `analysis_calculate_fibonacci_levels`| Support/Resistance levels |
+| **Analysis** | `analysis_calculate_rsi` | Momentum analysis (RSI) |
+| **Analysis** | `analysis_calculate_macd` | Trend & momentum (MACD) |
+| **Analysis** | `analysis_calculate_adx` | Trend strength (ADX) |
+| **Analysis** | `analysis_calculate_moving_averages` | Trend analysis (SMA/EMA) |
+| **Analysis** | `analysis_calculate_bollinger_bands` | Volatility study |
+| **Analysis** | `analysis_calculate_support_resistance` | Pivot-based levels |
+| **Analysis** | `analysis_calculate_volatility_metrics` | Risk assessment (ATR) |
+| **Analysis** | `analysis_calculate_stochastic` | Momentum oscillator |
+| **Analysis** | `analysis_calculate_williams_r` | %R Momentum |
+| **Analysis** | `analysis_calculate_fibonacci_levels`| Retracement levels |
+| **Analysis** | `analysis_analyze_candlestick_patterns`| Pattern detection |
 | **Analysis** | `analysis_get_technical_analysis`| Holistic multi-indicator report |
 | **Account** | `account_get_summary` | Portfolio snapshot |
+| **Account** | `account_get_user_margin` | Available funds |
+| **Account** | `account_get_holdings_list` | Equity holdings |
+| **Account** | `account_get_positions_list` | Active positions |
 | **Account** | `account_get_order_book` | Daily orders |
 | **Account** | `account_get_trade_history` | Daily executions |
 
@@ -485,18 +496,24 @@ pip install -e .
 
 ## 🗺️ Roadmap
 
-### Version 1.1 (Planned)
-- [ ] Automatic token refresh mechanism
-- [ ] Caching layer for improved performance
-- [ ] More candlestick pattern detection
-- [ ] Custom indicator support
+### Version 1.1 (Done)
+- [x] Caching layer for improved performance
+- [x] Basic candlestick pattern detection
 
-### Version 2.0 (Future)
-- [ ] Database integration for historical tracking
+### Version 2.0 (Done) 🚀
+- [x] **Granular Technical Indicators**: 10+ new specialized TA tools
+- [x] **Namespaced Tools**: Logical grouping (`market_`, `analysis_`, `account_`)
+- [x] **Historical Data**: Custom timeframe retrieval
+- [x] **Instrument Search**: Find symbols by name
+- [x] **JSON-Safe Response Schema**: Robust serialization for all agents
+- [x] **Order & Trade Tracking**: Real-time access to daily activity
+
+### Version 3.0 (Planned)
+- [ ] Automatic token refresh mechanism
+- [ ] Database integration for long-term historical tracking
 - [ ] Portfolio performance analytics
-- [ ] Backtesting framework
 - [ ] Alert system
-- [ ] Multi-user support
+- [ ] Machine learning predictions
 
 ### Version 3.0 (Vision)
 - [ ] Machine learning predictions
