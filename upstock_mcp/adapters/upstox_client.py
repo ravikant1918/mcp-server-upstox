@@ -20,6 +20,11 @@ class UpstoxClient:
         # Configure OAuth2 access token for authorization: OAUTH2
         self.configuration = upstox_client.Configuration()
         self.configuration.access_token = config.UPSTOX_ACCESS_TOKEN
+        
+        # Set API Key if available
+        if config.UPSTOX_API_KEY:
+            self.configuration.api_key['OAUTH2'] = config.UPSTOX_API_KEY
+            
         self.configuration.host = config.UPSTOX_API_BASE_URL
         
         self.api_client = upstox_client.ApiClient(self.configuration)

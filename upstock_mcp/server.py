@@ -1,3 +1,11 @@
+import warnings
+import os
+import sys
+
+# Suppress pandas and other library warnings that might interfere with stdio
+warnings.filterwarnings("ignore")
+os.environ["PYTHONWARNINGS"] = "ignore"
+
 from fastmcp import FastMCP
 import json
 from datetime import datetime, timedelta
