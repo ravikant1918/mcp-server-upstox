@@ -571,9 +571,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [FastMCP Guide](https://github.com/jlowin/fastmcp)
 
 ### Get Help
-- **Issues**: [GitHub Issues](https://github.com/your-username/upstox-mcp/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/your-username/upstox-mcp/discussions)
-- **Email**: your-email@example.com
+- **Issues**: [GitHub Issues](https://github.com/ravikant1918/mcp-server-upstox/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/ravikant1918/mcp-server-upstox/discussions)
+- **Email**: developerrk1918@gmail.com
 
 ### Community
 - Star ⭐ this repo if you find it useful
