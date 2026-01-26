@@ -5,7 +5,7 @@ import os
 import pathlib
 import httpx
 import asyncio
-from typing import Dict, Optional
+from typing import List, Dict, Optional
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -118,4 +118,3 @@ class InstrumentEngine:
             "exchange": exchange.upper(),
             "instrument_key": instrument_key
         }
-from typing import List, Dict, Optional
