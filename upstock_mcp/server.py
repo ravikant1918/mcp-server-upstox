@@ -27,9 +27,15 @@ mcp = FastMCP("Upstox")
 
 async def _get_client(ctx: Context) -> UpstoxClient:
     """Helper to get authorized client from context headers or environment."""
-    headers = ctx.request_context.get("headers", {}) if hasattr(ctx, "request_context") and ctx.request_context else {}
+    headers = {}
+    if ctx and hasattr(ctx, "request_context") and ctx.request_context:
+        # ctx.request_context is a RequestContext dataclass, not a dict
+        request = getattr(ctx.request_context, "request", None)
+        if request and hasattr(request, "headers"):
+            headers = request.headers
     
     # Check for credentials in headers (BYOK support)
+    # Headers are case-insensitive in Starlette
     api_key = headers.get("x-upstox-api-key")
     api_secret = headers.get("x-upstox-api-secret")
     access_token = headers.get("x-upstox-access-token")
