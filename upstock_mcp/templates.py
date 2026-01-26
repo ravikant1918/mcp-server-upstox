@@ -259,7 +259,7 @@ HTML_CONTENT = """
         </div>
 
         <div id="mcpConfig" class="mcp-config-section">
-            <h2 class="section-title">MCP Configuration</h2>
+            <h2 class="section-title">MCP Configuration (Remote BYOK)</h2>
             <div class="code-block-container">
                 <button class="copy-btn" onclick="copyConfig(this)">Copy JSON</button>
                 <pre id="configJson">{
@@ -269,13 +269,11 @@ HTML_CONTENT = """
       "args": [
         "-y",
         "mcp-remote",
-        "https://mcp-server-upstox.onrender.com/mcp"
-      ],
-      "env": {
-        "UPSTOX_API_KEY": "YOUR_API_KEY",
-        "UPSTOX_API_SECRET": "YOUR_API_SECRET",
-        "UPSTOX_ACCESS_TOKEN": "YOUR_ACCESS_TOKEN"
-      }
+        "https://mcp-server-upstox.onrender.com/mcp",
+        "--header", "X-Upstox-API-Key:YOUR_API_KEY",
+        "--header", "X-Upstox-API-Secret:YOUR_API_SECRET",
+        "--header", "X-Upstox-Access-Token:YOUR_ACCESS_TOKEN"
+      ]
     }
   }
 }</pre>
@@ -284,7 +282,9 @@ HTML_CONTENT = """
             <div class="instructions">
                 <h2 class="section-title">How to Connect</h2>
                 
-                <h3>Claude Desktop (Recommended)</h3>
+                <p style="margin-bottom: 1rem; font-size: 0.95rem;">This server supports <strong>Bring Your Own Key (BYOK)</strong>. You can use your own credentials without configuring them on the server side.</p>
+
+                <h3>Claude Desktop (Remote)</h3>
                 <ol>
                     <li>Open Claude Desktop configuration file:
                         <ul>
@@ -292,15 +292,15 @@ HTML_CONTENT = """
                             <li>Windows: <code>%APPDATA%\\Claude\\claude_desktop_config.json</code></li>
                         </ul>
                     </li>
-                    <li>Paste the JSON configuration above into the <code>mcpServers</code> object.</li>
-                    <li>Replace <code>YOUR_API_KEY</code>, <code>YOUR_API_SECRET</code>, and <code>YOUR_ACCESS_TOKEN</code> with your Upstox credentials.</li>
+                    <li>Paste the JSON configuration above.</li>
+                    <li>Replace the <code>YOUR_...</code> placeholders with your actual Upstox credentials.</li>
                     <li>Restart Claude Desktop.</li>
                 </ol>
 
-                <h3 style="margin-top: 1.5rem;">Other MCP Clients</h3>
+                <h3 style="margin-top: 1.5rem;">Local Connection (stdio)</h3>
                 <ol>
-                    <li>Copy the <code>command</code>, <code>args</code>, and <code>env</code> values into your client's MCP settings.</li>
-                    <li>Ensure <code>npx</code> is installed on your system.</li>
+                    <li>If you are running the server locally, you can pass credentials via the <code>env</code> block in your config.</li>
+                    <li>The server will automatically detect and use these variables.</li>
                 </ol>
             </div>
         </div>

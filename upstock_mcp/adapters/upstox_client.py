@@ -16,14 +16,15 @@ class UpstoxClient:
     Since the SDK is synchronous, we use run_in_executor to avoid blocking the event loop.
     """
     
-    def __init__(self):
+    def __init__(self, access_token: Optional[str] = None, api_key: Optional[str] = None, api_secret: Optional[str] = None):
         # Configure OAuth2 access token for authorization: OAUTH2
         self.configuration = upstox_client.Configuration()
-        self.configuration.access_token = config.UPSTOX_ACCESS_TOKEN
+        self.configuration.access_token = access_token or config.UPSTOX_ACCESS_TOKEN
         
         # Set API Key if available
-        if config.UPSTOX_API_KEY:
-            self.configuration.api_key['OAUTH2'] = config.UPSTOX_API_KEY
+        api_key = api_key or config.UPSTOX_API_KEY
+        if api_key:
+            self.configuration.api_key['OAUTH2'] = api_key
             
         self.configuration.host = config.UPSTOX_API_BASE_URL
         
