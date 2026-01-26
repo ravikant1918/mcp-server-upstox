@@ -2,6 +2,8 @@
 
 A **Model Context Protocol (MCP)** server that integrates with the **Upstox Trading API**, enabling AI agents like Claude to securely access Indian stock market data, perform technical analysis, and view account information in **read-only mode**.
 
+> 📖 **Featured on Modern AI Day:** [The USB Port for AI: How the Upstox MCP Server Connects Claude to Real-Time Market Data](https://medium.com/@ravikantyadav1918/the-usb-port-for-ai-how-the-upstox-mcp-server-connects-claude-to-real-time-market-data-ba179358e891)
+
 ---
 
 ## 🚀 Features
