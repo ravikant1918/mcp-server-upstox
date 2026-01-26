@@ -7,6 +7,8 @@ warnings.filterwarnings("ignore")
 os.environ["PYTHONWARNINGS"] = "ignore"
 
 from fastmcp import FastMCP
+from starlette.requests import Request
+from starlette.responses import HTMLResponse
 import json
 from datetime import datetime, timedelta
 
@@ -18,9 +20,16 @@ from upstock_mcp.engines.context_engine import ContextEngine
 from upstock_mcp.engines.account_engine import AccountEngine
 from upstock_mcp.engines.instrument_engine import InstrumentEngine
 from upstock_mcp.utils import format_response, format_error
+from upstock_mcp.templates import HTML_CONTENT
 
 # Initialize Engines
 mcp = FastMCP("Upstox")
+
+@mcp.custom_route("/", methods=["GET"])
+async def root_page(request: Request) -> HTMLResponse:
+    """Home page for the Upstox MCP Server."""
+    return HTMLResponse(HTML_CONTENT)
+
 client = UpstoxClient()
 instruments = InstrumentEngine()
 
