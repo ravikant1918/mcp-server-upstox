@@ -4,7 +4,7 @@ A **Model Context Protocol (MCP)** server that integrates with the **Upstox Trad
 
 > 📖 **Featured on Modern AI Day:** [The USB Port for AI: How the Upstox MCP Server Connects Claude to Real-Time Market Data](https://medium.com/@ravikantyadav1918/the-usb-port-for-ai-how-the-upstox-mcp-server-connects-claude-to-real-time-market-data-ba179358e891)
 >
-> 🌐 **Live Remote Instance:** `https://mcp-server-upstox.onrender.com/mcp`
+> 🌐 **Live Remote Instance:** [https://mcp-server-upstox.onrender.com/mcp](https://mcp-server-upstox.onrender.com/mcp)
 
 ---
 
