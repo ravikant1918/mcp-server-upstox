@@ -10,9 +10,9 @@ RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
 # Copy the project files
 COPY . .
 
-# Upgrade pip and install the package (using --pre for beta pandas-ta)
+# Upgrade pip and install the package
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir --pre .
+    pip install --no-cache-dir .
 
 # Expose the default port for HTTP transport
 EXPOSE 8000
