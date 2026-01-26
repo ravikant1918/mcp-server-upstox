@@ -7,25 +7,22 @@ A **Model Context Protocol (MCP)** server that integrates with the **Upstox Trad
 ## 🚀 Features
 
 ### 📊 Market Data
-- **Live quotes** - Last Traded Price (LTP), OHLC, Volume
-- **Intraday candles** - 1min, 3min, 5min, 10min, 15min, 30min intervals
-- **Historical data** - Daily, weekly, monthly candles
-- **NSE & BSE** - Support for both exchanges
+- **Live quotes** - `market_get_live_quote`
+- **Search Instruments** - `market_search_instruments`
+- **Historical data** - `market_get_historical_data` (Custom ranges)
+- **Intraday candles** - `market_get_intraday_candles`
 
 ### 📈 Technical Analysis
-- **Momentum Indicators** - RSI, MACD
-- **Trend Indicators** - EMA, SMA, VWAP
-- **Volatility Indicators** - Bollinger Bands, ATR
-- **Candlestick Patterns** - Doji, Hammer, Engulfing, and more
-- **Smart Context** - Trend direction, strength, bias summary
-- **Support & Resistance** - Automatically calculated levels
+- **Granular Indicators** - Individual tools for RSI, MACD, ADX, Bollinger Bands, etc.
+- **Fibonacci Levels** - `analysis_calculate_fibonacci_levels`
+- **Candlestick Patterns** - `analysis_analyze_candlestick_patterns`
+- **Smart Context** - `analysis_get_technical_analysis` (Super Tool)
 
 ### 👤 Account Management (Read-Only)
-- **Profile details** - User information
-- **Funds summary** - Available margin, used margin
-- **Holdings** - Long-term equity positions with P&L
-- **Positions** - Active intraday/short-term trades
-- **Portfolio overview** - Total exposure, investment value
+- **Margin Details** - `account_get_user_margin`
+- **Order Book** - `account_get_order_book`
+- **Trade History** - `account_get_trade_history`
+- **Portfolio** - Holdings and Positions lists
 
 ### 🤖 MCP Native
 - **AI-First Design** - Built specifically for AI agents
@@ -306,15 +303,23 @@ For running the server remotely or in a separate process:
 
 ## 🧰 Available MCP Tools
 
-| Tool Name | Description | Parameters |
-|-----------|-------------|------------|
-| `get_live_quote` | Live price, OHLC, volume | `symbol`, `exchange` |
-| `get_intraday_candles` | Intraday OHLCV data | `symbol`, `interval`, `exchange` |
-| `get_historical_candles` | Historical market data | `symbol`, `interval`, `from_date`, `to_date` |
-| `get_technical_analysis` | Multi-indicator analysis | `symbol`, `interval`, `indicators`, `exchange` |
-| `get_account_summary` | Funds + portfolio overview | None |
-| `get_holdings_list` | All equity holdings | None |
-| `get_positions_list` | Active positions | None |
+| Category | Tool Name | Description |
+| :--- | :--- | :--- |
+| **Market** | `market_get_live_quote` | Last Traded Price, OHLC, Volume |
+| **Market** | `market_search_instruments` | Search for trading symbols |
+| **Market** | `market_get_historical_data` | Custom historical candle data |
+| **Market** | `market_get_intraday_candles` | Real-time intraday charts |
+| **Analysis** | `analysis_calculate_rsi` | Momentum analysis |
+| **Analysis** | `analysis_calculate_macd` | Trend & momentum |
+| **Analysis** | `analysis_calculate_adx` | Trend strength |
+| **Analysis** | `analysis_calculate_fibonacci_levels`| Support/Resistance levels |
+| **Analysis** | `analysis_get_technical_analysis`| Holistic multi-indicator report |
+| **Account** | `account_get_summary` | Portfolio snapshot |
+| **Account** | `account_get_order_book` | Daily orders |
+| **Account** | `account_get_trade_history` | Daily executions |
+
+> [!NOTE]
+> All tools return a standardized JSON response: `{ "success": true, "data": ..., "error": null, "metadata": ... }`.
 
 ### Tool Details
 
