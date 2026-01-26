@@ -5,7 +5,7 @@ import os
 import pathlib
 import httpx
 import asyncio
-from typing import Dict, Optional
+from typing import List, Dict, Optional
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -88,3 +88,33 @@ class InstrumentEngine:
             return self._instruments.get(f"{symbol}:NSE")
             
         return None
+
+    def search(self, query: str) -> List[Dict[str, str]]:
+        """
+        Search for instruments matching the query string in symbol.
+        """
+        query = query.upper()
+        results = []
+        for key_pair, instrument_key in self._instruments.items():
+            symbol, exchange = key_pair.split(":")
+            if query in symbol:
+                results.append({
+                    "symbol": symbol,
+                    "exchange": exchange,
+                    "instrument_key": instrument_key
+                })
+        return results[:50] # Limit to 50 results
+
+    def get_details(self, symbol: str, exchange: str = "NSE_EQ") -> Optional[Dict]:
+        """
+        Get full details for a specific instrument.
+        """
+        instrument_key = self.resolve(symbol, exchange)
+        if not instrument_key:
+            return None
+            
+        return {
+            "symbol": symbol.upper(),
+            "exchange": exchange.upper(),
+            "instrument_key": instrument_key
+        }

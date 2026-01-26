@@ -9,16 +9,13 @@ class IndicatorEngine:
     def add_indicators(df: pd.DataFrame, indicators: List[str]) -> pd.DataFrame:
         """
         Add requested indicators to the DataFrame.
-        Supported: RSI, EMA, SMA, MACD, VWAP, ATR, BBANDS
+        Supported: RSI, EMA, SMA, MACD, VWAP, ATR, BBANDS, ADX, STOCH, WILLR
         """
         if df.empty:
             return df
             
         # Ensure we have a working copy
         df = df.copy()
-        
-        # Helper to parse complex requests like 'EMA_50' if we wanted to support it dynamic ally
-        # For now, we support standard default params or specific presets
         
         for ind in indicators:
             ind_upper = ind.upper()
@@ -31,7 +28,6 @@ class IndicatorEngine:
                 if 'volume' in df.columns:
                     df.ta.vwap(append=True)
             elif ind_upper.startswith('EMA'):
-                # Handle EMA or EMA_20
                 length = 14
                 if '_' in ind_upper:
                     try:
@@ -51,8 +47,36 @@ class IndicatorEngine:
                 df.ta.bbands(append=True)
             elif ind_upper == 'ATR':
                 df.ta.atr(append=True)
+            elif ind_upper == 'ADX':
+                df.ta.adx(append=True)
+            elif ind_upper == 'STOCH':
+                df.ta.stoch(append=True)
+            elif ind_upper == 'WILLR':
+                df.ta.willr(append=True)
                 
         return df
+
+    @staticmethod
+    def calculate_fibonacci_levels(df: pd.DataFrame) -> Dict[str, float]:
+        """
+        Calculate Fibonacci retracement levels based on the high/low of the period.
+        """
+        if df.empty:
+            return {}
+            
+        max_price = df['high'].max()
+        min_price = df['low'].min()
+        diff = max_price - min_price
+        
+        return {
+            "0.0": float(max_price),
+            "23.6": float(max_price - 0.236 * diff),
+            "38.2": float(max_price - 0.382 * diff),
+            "50.0": float(max_price - 0.5 * diff),
+            "61.8": float(max_price - 0.618 * diff),
+            "78.6": float(max_price - 0.786 * diff),
+            "100.0": float(min_price)
+        }
 
     @staticmethod
     def get_support_resistance(df: pd.DataFrame) -> Dict[str, List[float]]:
@@ -64,13 +88,12 @@ class IndicatorEngine:
             return {"support": [], "resistance": []}
             
         # Simple Pivot High/Low
-        # window of 5
+        # window of 10
         pivot_highs = df['high'][df['high'] == df['high'].rolling(10, center=True).max()]
         pivot_lows = df['low'][df['low'] == df['low'].rolling(10, center=True).min()]
         
-        # Filter recent ones or significant ones? 
-        # Return unique sorted values
+        # Return unique sorted values, converted to float for JSON serialization
         return {
-            "support": sorted(pivot_lows.unique().tolist()),
-            "resistance": sorted(pivot_highs.unique().tolist())
+            "support": [float(v) for v in sorted(pivot_lows.unique().tolist())],
+            "resistance": [float(v) for v in sorted(pivot_highs.unique().tolist())]
         }
