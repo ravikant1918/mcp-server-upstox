@@ -4,7 +4,7 @@ A **Model Context Protocol (MCP)** server that integrates with the **Upstox Trad
 
 > 📖 **Featured on Modern AI Day:** [The USB Port for AI: How the Upstox MCP Server Connects Claude to Real-Time Market Data](https://medium.com/@ravikantyadav1918/the-usb-port-for-ai-how-the-upstox-mcp-server-connects-claude-to-real-time-market-data-ba179358e891)
 >
-> 🌐 **Live Remote Instance:** `https://mcp-server-upstox.onrender.com/mcp`
+> 🌐 **Live Remote Instance:** [https://mcp-server-upstox.onrender.com/mcp](https://mcp-server-upstox.onrender.com/mcp)
 
 ---
 
@@ -31,7 +31,7 @@ A **Model Context Protocol (MCP)** server that integrates with the **Upstox Trad
 ### 🤖 MCP Native
 - **AI-First Design** - Built specifically for AI agents
 - **Tool-Based Architecture** - Natural language to API calls
-- **Multi-Agent Support** - Works with Claude, Cursor, custom agents
+- **Multi-User Support** - Secure "Bring Your Own Key" (BYOK) architecture
 - **Conversational Interface** - No complex API knowledge needed
 
 ---
@@ -232,29 +232,30 @@ which upstox-mcp
    - **Type**: HTTP
    - **URL**: `http://localhost:8000/mcp`
 
-### Remote MCP (via mcp-remote)
+### Remote MCP (via mcp-remote) — BYOK Support
 
-For running the server remotely or in a separate process:
+For running the server remotely or in a multi-user environment (e.g., Render), you can pass your credentials via headers. This is known as **Bring Your Own Key (BYOK)**.
 
 ```json
 {
   "mcpServers": {
-    "Upstox-HTTP": {
+    "Upstox-Remote": {
       "command": "npx",
       "args": [
         "-y",
         "mcp-remote",
-        "https://mcp-server-upstox.onrender.com/mcp"
-      ],
-      "env": {
-        "UPSTOX_API_KEY": "YOUR_API_KEY",
-        "UPSTOX_API_SECRET": "YOUR_API_SECRET",
-        "UPSTOX_ACCESS_TOKEN": "YOUR_ACCESS_TOKEN"
-      }
+        "https://mcp-server-upstox.onrender.com/mcp",
+        "--header", "X-Upstox-API-Key:YOUR_API_KEY",
+        "--header", "X-Upstox-API-Secret:YOUR_API_SECRET",
+        "--header", "X-Upstox-Access-Token:YOUR_ACCESS_TOKEN"
+      ]
     }
   }
 }
 ```
+
+> [!TIP]
+> This allows multiple users to use the same server instance securely without sharing credentials on the server side.
 
 ---
 
@@ -511,6 +512,11 @@ pip install -e .
 - [x] **Instrument Search**: Find symbols by name
 - [x] **JSON-Safe Response Schema**: Robust serialization for all agents
 - [x] **Order & Trade Tracking**: Real-time access to daily activity
+
+### Version 2.1 (Done) 🚀
+- [x] **BYOK Support**: Pass credentials via HTTP headers
+- [x] **Multi-User Support**: Secure architecture for shared deployments
+- [x] **Dynamic Instructions**: Interactive landing page with setup guides
 
 ### Version 3.0 (Planned)
 - [ ] Automatic token refresh mechanism

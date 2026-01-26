@@ -23,7 +23,7 @@ def main():
 
     parser.add_argument("--host", default="127.0.0.1", help="Host for HTTP/SSE (default: 127.0.0.1)")
     parser.add_argument("--port", type=int, default=8000, help="Port for HTTP/SSE (default: 8000)")
-    parser.add_argument("--version", action="version", version="upstox-mcp 2.0.0")
+    parser.add_argument("--version", action="version", version="upstox-mcp 2.1.0")
 
     args = parser.parse_args()
 
