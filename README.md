@@ -1,10 +1,53 @@
-# Upstox MCP Server 📈
+# Upstox MCP Server: Global Model Context Protocol for Indian Equity Markets 📈
 
-A **Model Context Protocol (MCP)** server that integrates with the **Upstox Trading API**, enabling AI agents like Claude to securely access Indian stock market data, perform technical analysis, and view account information in **read-only mode**.
+[![GitHub Star](https://img.shields.io/github/stars/ravikant1918/mcp-server-upstox?style=social)](https://github.com/ravikant1918/mcp-server-upstox)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python Support](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
+[![MCP Version](https://img.shields.io/badge/MCP-1.26.0-orange.svg)](https://modelcontextprotocol.io/)
 
-> 📖 **Featured on Modern AI Day:** [The USB Port for AI: How the Upstox MCP Server Connects Claude to Real-Time Market Data](https://medium.com/@ravikantyadav1918/the-usb-port-for-ai-how-the-upstox-mcp-server-connects-claude-to-real-time-market-data-ba179358e891)
+The **Official-style Upstox MCP Server** provides a high-performance **Model Context Protocol (MCP)** integration for the **Upstox Trading API**. It enables AI agents like **Claude Desktop**, **Cursor IDE**, and custom LLM applications to securely access real-time **Indian stock market data (NSE, BSE, MCX)**, perform advanced **technical analysis (RSI, MACD, Bollinger Bands)**, and manage portfolio information in a **strictly read-only mode**. 
+
+Optimized for **algorithmic trading**, **market analysis**, and **automated research** on **Nifty 50**, **Bank Nifty**, and thousands of Indian equities.
+
+> 📖 **Featured on Modern AI Day:** [The USB Port for AI: Connecting Claude to Real-Time Market Data](https://medium.com/@ravikantyadav1918/the-usb-port-for-ai-how-the-upstox-mcp-server-connects-claude-to-real-time-market-data-ba179358e891)
 >
-> 🌐 **Live Remote Instance:** [https://mcp-server-upstox.onrender.com/mcp](https://mcp-server-upstox.onrender.com/mcp)
+> 🌐 **Live Demo Instance:** [https://mcp-server-upstox.onrender.com/mcp](https://mcp-server-upstox.onrender.com/mcp)
+
+---
+
+## 🛠️ Technical Stack
+
+- **Framework:** [FastMCP](https://github.com/jlowin/fastmcp) (MCP Python SDK)
+- **API Engine:** [FastAPI](https://fastapi.tiangolo.com/) & [Uvicorn](https://www.uvicorn.org/)
+- **Data Science:** [Pandas](https://pandas.pydata.org/), [NumPy](https://numpy.org/)
+- **Technical Analysis:** [Pandas-TA](https://github.com/twopirllc/pandas-ta)
+- **Client Integration:** [Httpx](https://www.python-httpx.org/), [Upstox Python SDK](https://github.com/upstox/upstox-python)
+- **Deployment:** [Docker](https://www.docker.com/), [Render](https://render.com/)
+
+
+---
+
+## ⚡ Quick Start (Remote BYOK)
+
+Connect Claude Desktop to your remote instance in seconds using **Bring Your Own Key (BYOK)** support:
+
+```json
+{
+  "mcpServers": {
+    "Upstox-Remote": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://mcp-server-upstox.onrender.com/mcp",
+        "--header", "X-Upstox-API-Key:YOUR_API_KEY",
+        "--header", "X-Upstox-API-Secret:YOUR_API_SECRET",
+        "--header", "X-Upstox-Access-Token:YOUR_ACCESS_TOKEN"
+      ]
+    }
+  }
+}
+```
 
 ---
 
@@ -558,6 +601,27 @@ pytest
 black .
 flake8 .
 ```
+
+---
+
+## 🗺️ Roadmap
+
+### Q1 2026: Foundation & Core Analysis (Current)
+- [x] Initial MCP implementation for Upstox
+- [x] Comprehensive technical indicator tools
+- [x] Bring Your Own Key (BYOK) support for remote deployments
+- [x] Dynamic JSON configuration generator
+
+### Q2 2026: Advanced Insights
+- [ ] Sector-wise market analysis tools
+- [ ] Option Chain analysis (Greeks calculation)
+- [ ] Corporate actions tracking (Dividends, Splits)
+- [ ] Multi-instrument correlation analysis
+
+### Q3 2026: Ecosystem Expansion
+- [ ] Integrated Backtesting engine wrapper
+- [ ] Webhook support for real-time alerts
+- [ ] Native support for more MCP clients (e.g., Goose, Windsurf)
 
 ---
 
