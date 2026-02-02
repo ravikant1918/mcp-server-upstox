@@ -63,6 +63,10 @@ class InstrumentEngine:
         
         # Load from cache file to memory
         if self.cache_file.exists():
+            # Optimization: Don't read from disk if we already have data in memory
+            if self._instruments and not force:
+                return
+
             try:
                 with open(self.cache_file, "r") as f:
                     self._instruments = json.load(f)

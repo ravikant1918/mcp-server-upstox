@@ -16,7 +16,7 @@ class UpstoxClient:
     Since the SDK is synchronous, we use run_in_executor to avoid blocking the event loop.
     """
     
-    def __init__(self, access_token: Optional[str] = None, api_key: Optional[str] = None, api_secret: Optional[str] = None):
+    def __init__(self, access_token: Optional[str] = None, api_key: Optional[str] = None, api_secret: Optional[str] = None, executor: Optional[ThreadPoolExecutor] = None):
         # Configure OAuth2 access token for authorization: OAUTH2
         self.configuration = upstox_client.Configuration()
         self.configuration.access_token = access_token or config.UPSTOX_ACCESS_TOKEN
@@ -38,7 +38,7 @@ class UpstoxClient:
         self.order_api = upstox_client.OrderApi(self.api_client) # For read-only order history
         
         # Executor for sync calls
-        self.executor = ThreadPoolExecutor(max_workers=10)
+        self.executor = executor or ThreadPoolExecutor(max_workers=10)
 
     async def _run_sync(self, func, *args, **kwargs):
         loop = asyncio.get_event_loop()

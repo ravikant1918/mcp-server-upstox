@@ -21,9 +21,14 @@ from upstock_mcp.engines.account_engine import AccountEngine
 from upstock_mcp.engines.instrument_engine import InstrumentEngine
 from upstock_mcp.utils import format_response, format_error
 from upstock_mcp.templates import HTML_CONTENT
+from concurrent.futures import ThreadPoolExecutor
 
 # Initialize Engines
 mcp = FastMCP("Upstox")
+
+# Global Resource Pool
+# Use a single executor for all client instances to prevent resource exhaustion
+global_executor = ThreadPoolExecutor(max_workers=20, thread_name_prefix="upstox_worker")
 
 async def _get_client(ctx: Context) -> UpstoxClient:
     """Helper to get authorized client from context headers or environment."""
@@ -41,9 +46,9 @@ async def _get_client(ctx: Context) -> UpstoxClient:
     access_token = headers.get("x-upstox-access-token")
     
     if api_key or api_secret or access_token:
-        return UpstoxClient(access_token=access_token, api_key=api_key, api_secret=api_secret)
+        return UpstoxClient(access_token=access_token, api_key=api_key, api_secret=api_secret, executor=global_executor)
         
-    return UpstoxClient()
+    return UpstoxClient(executor=global_executor)
 
 @mcp.custom_route("/", methods=["GET"])
 async def root_page(request: Request) -> HTMLResponse:
