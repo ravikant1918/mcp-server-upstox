@@ -2,17 +2,12 @@ import warnings
 import os
 import sys
 import logging
-
-# Suppress pandas and other library warnings that might interfere with stdio
-warnings.filterwarnings("ignore")
-os.environ["PYTHONWARNINGS"] = "ignore"
+from functools import wraps
 
 from fastmcp import FastMCP, Context
 from starlette.requests import Request
 from starlette.responses import HTMLResponse
-import json
 from datetime import datetime, timedelta
-
 from upstock_mcp.adapters.upstox_client import UpstoxClient
 from upstock_mcp.engines.candle_engine import CandleEngine
 from upstock_mcp.engines.indicator_engine import IndicatorEngine
@@ -58,9 +53,11 @@ async def _get_client(ctx: Context) -> UpstoxClient:
 # Tool wrapper to standardize error handling and logging for MCP tools
 def mcp_wrapped_tool(name: str, error_type: str = "ToolError"):
     def decorator(fn):
-        async def wrapper(*args, **kwargs):
+        @wraps(fn)
+        async def wrapper(**kwargs):
+            """Generic wrapper that only accepts keyword arguments to be compatible with FastMCP tool parsing (disallows *args)."""
             try:
-                return await fn(*args, **kwargs)
+                return await fn(**kwargs)
             except Exception as e:
                 logger.exception("Unhandled error in tool %s", name)
                 return format_response(error=format_error(str(e), error_type))
