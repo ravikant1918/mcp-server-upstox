@@ -18,6 +18,7 @@ class CandleEngine:
         df = pd.DataFrame(candles_data, columns=columns)
         
         # Ensure correct types
+        # Upstox timestamps are often ISO strings or similar, converting to datetime objects
         df['timestamp'] = pd.to_datetime(df['timestamp'])
         df['open'] = df['open'].astype(float)
         df['high'] = df['high'].astype(float)
@@ -29,8 +30,9 @@ class CandleEngine:
         # We usually want oldest first for TA.
         df = df.sort_values('timestamp', ascending=True).reset_index(drop=True)
         
-        # Convert timestamp to string to avoid serialization issues with pandas Timestamp
-        df['timestamp'] = df['timestamp'].dt.strftime('%Y-%m-%dT%H:%M:%S')
+        # NOTE: We keep 'timestamp' as pd.Timestamp objects here to allow for 
+        # proper resampling and time-based operations. 
+        # Serialization to string happens in utils.format_response / utils.to_json_safe.
         
         return df
 
@@ -38,13 +40,22 @@ class CandleEngine:
     def resample_candles(df: pd.DataFrame, interval: str) -> pd.DataFrame:
         """
         Resample 1-minute candles to a larger interval (e.g., '5min', '15min').
-        Requires a DataFrame with a DatetimeIndex.
+        Requires a DataFrame with a DatetimeIndex or a 'timestamp' column of datetime type.
         """
         if df.empty or len(df) < 2:
             return df
             
-        # Set timestamp as index for resampling
-        df = df.set_index('timestamp')
+        # Ensure we work on a copy to avoid SettingWithCopy warnings on the original
+        df = df.copy()
+
+        # Set timestamp as index for resampling if it's not already
+        if not isinstance(df.index, pd.DatetimeIndex):
+            if 'timestamp' in df.columns:
+                 df['timestamp'] = pd.to_datetime(df['timestamp']) # safety check
+                 df = df.set_index('timestamp')
+            else:
+                # Can't resample without time index
+                return df
         
         # Mapping common MCP intervals to pandas offset aliases
         # 1minute -> 1min, 5minute -> 5min, etc.
@@ -63,14 +74,22 @@ class CandleEngine:
         if "minute" in rule: rule = rule.replace("minute", "min")
         
         # Resample logic
-        resampled = df.resample(rule).agg({
+        # Aggregation: 
+        # Open: first, High: max, Low: min, Close: last, Volume: sum, OI: last
+        resampler = df.resample(rule)
+        
+        resampled = resampler.agg({
             'open': 'first',
             'high': 'max',
             'low': 'min',
             'close': 'last',
             'volume': 'sum',
             'oi': 'last'
-        }).dropna()
+        })
+        
+        # Drop bins with no data (e.g. market closed times if not expecting gaps)
+        # However, for some charts we might want gaps. Defaulting to dropna() as per previous logic.
+        resampled = resampled.dropna()
         
         return resampled.reset_index()
 
@@ -78,4 +97,5 @@ class CandleEngine:
     def get_latest_candle(df: pd.DataFrame) -> Dict:
         if df.empty:
             return {}
+        # utils.to_json_safe will handle timestamp conversion
         return df.iloc[-1].to_dict()
