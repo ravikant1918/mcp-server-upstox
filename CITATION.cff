@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Yadav"
+  given-names: "Ravikant"
+title: "Upstox MCP Server"
+version: 2.1.0
+date-released: 2026-01-27
+url: "https://github.com/ravikant1918/mcp-server-upstox"
+repository-code: "https://github.com/ravikant1918/mcp-server-upstox"
+keywords:
+  - "MCP"
+  - "Model Context Protocol"
+  - "Upstox"
+  - "Trading API"
+  - "AI Agent"
+  - "Algorithmic Trading"
+  - "Indian Stock Market"
+  - "Finance"

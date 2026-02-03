@@ -1,6 +1,6 @@
 [project]
 name = "upstock-mcp"
-version = "2.1.0"
+version = "2.1.1"
 description = "MCP Server for Upstox integration"
 requires-python = ">=3.10"
 dependencies = [
@@ -15,6 +15,7 @@ dependencies = [
     "pandas-ta==0.4.71b0",
     "numpy>=2.2.6",
     "pydantic>=2.7.0",
+    "pydantic-settings>=2.0.0",
     "python-dotenv>=1.0.0",
     "uvloop>=0.22.1; sys_platform != 'win32'"
 ]

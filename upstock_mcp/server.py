@@ -1,6 +1,7 @@
 import warnings
 import os
 import sys
+import logging
 
 # Suppress pandas and other library warnings that might interfere with stdio
 warnings.filterwarnings("ignore")
@@ -21,9 +22,17 @@ from upstock_mcp.engines.account_engine import AccountEngine
 from upstock_mcp.engines.instrument_engine import InstrumentEngine
 from upstock_mcp.utils import format_response, format_error
 from upstock_mcp.templates import HTML_CONTENT
+from concurrent.futures import ThreadPoolExecutor
+
+# Module logger
+logger = logging.getLogger(__name__)
 
 # Initialize Engines
 mcp = FastMCP("Upstox")
+
+# Global Resource Pool
+# Use a single executor for all client instances to prevent resource exhaustion
+global_executor = ThreadPoolExecutor(max_workers=20, thread_name_prefix="upstox_worker")
 
 async def _get_client(ctx: Context) -> UpstoxClient:
     """Helper to get authorized client from context headers or environment."""
@@ -41,9 +50,25 @@ async def _get_client(ctx: Context) -> UpstoxClient:
     access_token = headers.get("x-upstox-access-token")
     
     if api_key or api_secret or access_token:
-        return UpstoxClient(access_token=access_token, api_key=api_key, api_secret=api_secret)
+        return UpstoxClient(access_token=access_token, api_key=api_key, api_secret=api_secret, executor=global_executor)
         
-    return UpstoxClient()
+    return UpstoxClient(executor=global_executor)
+
+
+# Tool wrapper to standardize error handling and logging for MCP tools
+def mcp_wrapped_tool(name: str, error_type: str = "ToolError"):
+    def decorator(fn):
+        async def wrapper(*args, **kwargs):
+            try:
+                return await fn(*args, **kwargs)
+            except Exception as e:
+                logger.exception("Unhandled error in tool %s", name)
+                return format_response(error=format_error(str(e), error_type))
+        # Register the wrapper as the MCP tool
+        mcp.tool(name=name)(wrapper)
+        return wrapper
+    return decorator
+
 
 @mcp.custom_route("/", methods=["GET"])
 async def root_page(request: Request) -> HTMLResponse:
@@ -63,15 +88,10 @@ async def _get_instrument_key(symbol: str, exchange: str) -> str:
 # MARKET DATA TOOLS
 # ----------------------------------------------------------------
 
-@mcp.tool(name="market_get_live_quote")
+@mcp_wrapped_tool(name="market_get_live_quote", error_type="MarketDataError")
 async def get_live_quote(symbol: str, exchange: str = "NSE_EQ", ctx: Context = None) -> dict:
     """
     Fetch the most recent market quote (LTP, OHLC, Volume) for a given trading symbol.
-    
-    :param symbol: Standard trading symbol (e.g., RELIANCE).
-    :param exchange: The stock exchange. Defaults to 'NSE_EQ'.
-    :param ctx: MCP Context.
-    :return: A standardized response with quote data.
     """
     client = await _get_client(ctx)
     symbol = symbol.upper()
@@ -80,15 +100,13 @@ async def get_live_quote(symbol: str, exchange: str = "NSE_EQ", ctx: Context = N
         data = await client.get_market_quote(instrument_key, exchange)
         return format_response(data=data, metadata={"symbol": symbol, "exchange": exchange})
     except Exception as e:
+        # Let the wrapper handle logging and standardized error response
         return format_response(error=format_error(str(e), "MarketDataError"), metadata={"symbol": symbol})
 
-@mcp.tool(name="market_search_instruments")
+@mcp_wrapped_tool(name="market_search_instruments", error_type="InstrumentSearchError")
 async def search_instruments(query: str) -> dict:
     """
     Search for instruments by symbol or name.
-    
-    :param query: The search query (e.g., 'RELIANCE', 'NIFTY').
-    :return: A list of matching instruments.
     """
     try:
         await instruments.refresh_if_needed()
@@ -97,14 +115,10 @@ async def search_instruments(query: str) -> dict:
     except Exception as e:
         return format_response(error=format_error(str(e), "InstrumentSearchError"))
 
-@mcp.tool(name="market_get_instrument_details")
+@mcp_wrapped_tool(name="market_get_instrument_details", error_type="InstrumentDetailsError")
 async def get_instrument_details(symbol: str, exchange: str = "NSE_EQ") -> dict:
     """
     Get detailed information about a specific instrument.
-    
-    :param symbol: Standard trading symbol.
-    :param exchange: The stock exchange (e.g., 'NSE_EQ', 'BSE_EQ').
-    :return: A dictionary with instrument details.
     """
     try:
         await instruments.refresh_if_needed()
@@ -115,7 +129,7 @@ async def get_instrument_details(symbol: str, exchange: str = "NSE_EQ") -> dict:
     except Exception as e:
         return format_response(error=format_error(str(e), "InstrumentDetailsError"))
 
-@mcp.tool(name="market_get_intraday_candles")
+@mcp_wrapped_tool(name="market_get_intraday_candles", error_type="IntradayDataError")
 async def get_intraday_candles(symbol: str, interval: str = "1minute", exchange: str = "NSE_EQ", ctx: Context = None) -> dict:
     """
     Retrieve intraday OHLCV (Open, High, Low, Close, Volume) candle data for a symbol.
@@ -141,7 +155,7 @@ async def get_intraday_candles(symbol: str, interval: str = "1minute", exchange:
     except Exception as e:
         return format_response(error=format_error(str(e), "IntradayDataError"), metadata={"symbol": symbol})
 
-@mcp.tool(name="market_get_historical_data")
+@mcp_wrapped_tool(name="market_get_historical_data", error_type="HistoricalDataError")
 async def get_historical_data(
     symbol: str, 
     exchange: str = "NSE_EQ", 
@@ -152,14 +166,6 @@ async def get_historical_data(
 ) -> dict:
     """
     Retrieve historical OHLC (Open, High, Low, Close) candlestick data.
-    
-    :param symbol: Standard trading symbol.
-    :param exchange: Exchange segment. Defaults to 'NSE_EQ'.
-    :param interval: Timeframe. Supported: '1minute', '30minute', 'day', 'week', 'month'.
-    :param start_time: Start date in 'YYYY-MM-DD' format.
-    :param end_time: End date in 'YYYY-MM-DD' format.
-    :param ctx: MCP Context.
-    :return: A standardized response with candle data.
     """
     client = await _get_client(ctx)
     symbol = symbol.upper()
@@ -187,7 +193,7 @@ async def get_historical_data(
 # TECHNICAL ANALYSIS TOOLS
 # ----------------------------------------------------------------
 
-@mcp.tool(name="analysis_get_technical_analysis")
+@mcp_wrapped_tool(name="analysis_get_technical_analysis", error_type="TechnicalAnalysisError")
 async def get_technical_analysis(
     symbol: str, 
     exchange: str = "NSE_EQ", 
@@ -270,14 +276,15 @@ async def _get_df_for_analysis(symbol: str, exchange: str, interval: str, client
         df = CandleEngine.resample_candles(df, interval)
     return df
 
-@mcp.tool(name="analysis_calculate_moving_averages")
+@mcp_wrapped_tool(name="analysis_calculate_moving_averages", error_type="AnalysisError")
 async def calculate_moving_averages(symbol: str, exchange: str = "NSE_EQ", interval: str = "1day", periods: list[int] | None = None, ctx: Context = None) -> dict:
     """Calculate SMA and EMA for trend analysis."""
     client = await _get_client(ctx)
     if periods is None:
         periods = [20, 50, 200]
     df = await _get_df_for_analysis(symbol, exchange, interval, client, days_back=250)
-    if df.empty: return format_response(error=format_error("No data", "NoDataError"))
+    if df.empty:
+        return format_response(error=format_error("No data", "NoDataError"))
     
     indicators = [f"EMA_{p}" for p in periods] + [f"SMA_{p}" for p in periods]
     df = IndicatorEngine.add_indicators(df, indicators)
@@ -285,104 +292,114 @@ async def calculate_moving_averages(symbol: str, exchange: str = "NSE_EQ", inter
     data = {k: v for k, v in latest.items() if any(x in k for x in ['EMA', 'SMA'])}
     return format_response(data=data, metadata={"symbol": symbol, "periods": periods})
 
-@mcp.tool(name="analysis_calculate_rsi")
+@mcp_wrapped_tool(name="analysis_calculate_rsi", error_type="AnalysisError")
 async def calculate_rsi(symbol: str, exchange: str = "NSE_EQ", interval: str = "1day", period: int = 14, ctx: Context = None) -> dict:
     """Calculate Relative Strength Index (RSI) for momentum analysis."""
     client = await _get_client(ctx)
     df = await _get_df_for_analysis(symbol, exchange, interval, client)
-    if df.empty: return format_response(error=format_error("No data", "NoDataError"))
+    if df.empty:
+        return format_response(error=format_error("No data", "NoDataError"))
     df = IndicatorEngine.add_indicators(df, ['RSI'])
     rsi_val = float(df.iloc[-1]['RSI_14'])
     return format_response(data={"rsi": rsi_val}, metadata={"symbol": symbol, "period": period})
 
-@mcp.tool(name="analysis_calculate_bollinger_bands")
+@mcp_wrapped_tool(name="analysis_calculate_bollinger_bands", error_type="AnalysisError")
 async def calculate_bollinger_bands(symbol: str, exchange: str = "NSE_EQ", interval: str = "1day", ctx: Context = None) -> dict:
     """Calculate Bollinger Bands for volatility analysis."""
     client = await _get_client(ctx)
     df = await _get_df_for_analysis(symbol, exchange, interval, client)
-    if df.empty: return format_response(error=format_error("No data", "NoDataError"))
+    if df.empty:
+        return format_response(error=format_error("No data", "NoDataError"))
     df = IndicatorEngine.add_indicators(df, ['BBANDS'])
     latest = df.iloc[-1].to_dict()
     data = {k: v for k, v in latest.items() if 'BBU' in k or 'BBL' in k or 'BBM' in k}
     return format_response(data=data, metadata={"symbol": symbol})
 
-@mcp.tool(name="analysis_calculate_support_resistance")
+@mcp_wrapped_tool(name="analysis_calculate_support_resistance", error_type="AnalysisError")
 async def calculate_support_resistance(symbol: str, exchange: str = "NSE_EQ", interval: str = "1day", ctx: Context = None) -> dict:
     """Identify key support and resistance levels."""
     client = await _get_client(ctx)
     df = await _get_df_for_analysis(symbol, exchange, interval, client, days_back=200)
-    if df.empty: return format_response(error=format_error("No data", "NoDataError"))
+    if df.empty:
+        return format_response(error=format_error("No data", "NoDataError"))
     data = IndicatorEngine.get_support_resistance(df)
     return format_response(data=data, metadata={"symbol": symbol})
 
-@mcp.tool(name="analysis_calculate_volatility_metrics")
+@mcp_wrapped_tool(name="analysis_calculate_volatility_metrics", error_type="AnalysisError")
 async def calculate_volatility_metrics(symbol: str, exchange: str = "NSE_EQ", interval: str = "1day", ctx: Context = None) -> dict:
     """Calculate various volatility metrics (ATR) for risk assessment."""
     client = await _get_client(ctx)
     df = await _get_df_for_analysis(symbol, exchange, interval, client)
-    if df.empty: return format_response(error=format_error("No data", "NoDataError"))
+    if df.empty:
+        return format_response(error=format_error("No data", "NoDataError"))
     df = IndicatorEngine.add_indicators(df, ['ATR'])
     atr_val = float(df.iloc[-1].filter(like='ATRr').iloc[0])
     return format_response(data={"atr": atr_val}, metadata={"symbol": symbol})
 
-@mcp.tool(name="analysis_calculate_macd")
+@mcp_wrapped_tool(name="analysis_calculate_macd", error_type="AnalysisError")
 async def calculate_macd(symbol: str, exchange: str = "NSE_EQ", interval: str = "1day", ctx: Context = None) -> dict:
     """Calculate MACD for trend and momentum analysis."""
     client = await _get_client(ctx)
     df = await _get_df_for_analysis(symbol, exchange, interval, client)
-    if df.empty: return format_response(error=format_error("No data", "NoDataError"))
+    if df.empty:
+        return format_response(error=format_error("No data", "NoDataError"))
     df = IndicatorEngine.add_indicators(df, ['MACD'])
     latest = df.iloc[-1].to_dict()
     data = {k: v for k, v in latest.items() if 'MACD' in k}
     return format_response(data=data, metadata={"symbol": symbol})
 
-@mcp.tool(name="analysis_calculate_stochastic")
+@mcp_wrapped_tool(name="analysis_calculate_stochastic", error_type="AnalysisError")
 async def calculate_stochastic(symbol: str, exchange: str = "NSE_EQ", interval: str = "1day", ctx: Context = None) -> dict:
     """Calculate Stochastic Oscillator for momentum analysis."""
     client = await _get_client(ctx)
     df = await _get_df_for_analysis(symbol, exchange, interval, client)
-    if df.empty: return format_response(error=format_error("No data", "NoDataError"))
+    if df.empty:
+        return format_response(error=format_error("No data", "NoDataError"))
     df = IndicatorEngine.add_indicators(df, ['STOCH'])
     latest = df.iloc[-1].to_dict()
     data = {k: v for k, v in latest.items() if 'STOCH' in k}
     return format_response(data=data, metadata={"symbol": symbol})
 
-@mcp.tool(name="analysis_calculate_williams_r")
+@mcp_wrapped_tool(name="analysis_calculate_williams_r", error_type="AnalysisError")
 async def calculate_williams_r(symbol: str, exchange: str = "NSE_EQ", interval: str = "1day", ctx: Context = None) -> dict:
     """Calculate Williams %R for momentum analysis."""
     client = await _get_client(ctx)
     df = await _get_df_for_analysis(symbol, exchange, interval, client)
-    if df.empty: return format_response(error=format_error("No data", "NoDataError"))
+    if df.empty:
+        return format_response(error=format_error("No data", "NoDataError"))
     df = IndicatorEngine.add_indicators(df, ['WILLR'])
     willr_val = float(df.iloc[-1].filter(like='WILLR').iloc[0])
     return format_response(data={"williams_r": willr_val}, metadata={"symbol": symbol})
 
-@mcp.tool(name="analysis_calculate_adx")
+@mcp_wrapped_tool(name="analysis_calculate_adx", error_type="AnalysisError")
 async def calculate_adx(symbol: str, exchange: str = "NSE_EQ", interval: str = "1day", ctx: Context = None) -> dict:
     """Calculate ADX for trend strength analysis."""
     client = await _get_client(ctx)
     df = await _get_df_for_analysis(symbol, exchange, interval, client)
-    if df.empty: return format_response(error=format_error("No data", "NoDataError"))
+    if df.empty:
+        return format_response(error=format_error("No data", "NoDataError"))
     df = IndicatorEngine.add_indicators(df, ['ADX'])
     latest = df.iloc[-1].to_dict()
     data = {k: v for k, v in latest.items() if 'ADX' in k or 'DMP' in k or 'DMN' in k}
     return format_response(data=data, metadata={"symbol": symbol})
 
-@mcp.tool(name="analysis_calculate_fibonacci_levels")
+@mcp_wrapped_tool(name="analysis_calculate_fibonacci_levels", error_type="AnalysisError")
 async def calculate_fibonacci_levels(symbol: str, exchange: str = "NSE_EQ", interval: str = "1day", ctx: Context = None) -> dict:
     """Calculate Fibonacci retracement and extension levels."""
     client = await _get_client(ctx)
     df = await _get_df_for_analysis(symbol, exchange, interval, client, days_back=365)
-    if df.empty: return format_response(error=format_error("No data", "NoDataError"))
+    if df.empty:
+        return format_response(error=format_error("No data", "NoDataError"))
     data = IndicatorEngine.calculate_fibonacci_levels(df)
     return format_response(data=data, metadata={"symbol": symbol})
 
-@mcp.tool(name="analysis_analyze_candlestick_patterns")
+@mcp_wrapped_tool(name="analysis_analyze_candlestick_patterns", error_type="AnalysisError")
 async def analyze_candlestick_patterns(symbol: str, exchange: str = "NSE_EQ", interval: str = "1day", ctx: Context = None) -> dict:
     """Identify common candlestick patterns."""
     client = await _get_client(ctx)
     df = await _get_df_for_analysis(symbol, exchange, interval, client)
-    if df.empty: return format_response(error=format_error("No data", "NoDataError"))
+    if df.empty:
+        return format_response(error=format_error("No data", "NoDataError"))
     patterns = PatternEngine.detect_patterns(df)
     return format_response(data=patterns, metadata={"symbol": symbol})
 
@@ -390,7 +407,7 @@ async def analyze_candlestick_patterns(symbol: str, exchange: str = "NSE_EQ", in
 # ACCOUNT TOOLS
 # ----------------------------------------------------------------
 
-@mcp.tool(name="account_get_summary")
+@mcp_wrapped_tool(name="account_get_summary", error_type="AccountSummaryError")
 async def get_account_summary(ctx: Context = None) -> dict:
     """
     Get a high-level overview of the linked Upstox account.
@@ -414,7 +431,7 @@ async def get_account_summary(ctx: Context = None) -> dict:
     except Exception as e:
          return format_response(error=format_error(str(e), "AccountSummaryError"))
 
-@mcp.tool(name="account_get_user_margin")
+@mcp_wrapped_tool(name="account_get_user_margin", error_type="MarginFetchError")
 async def get_user_margin(ctx: Context = None) -> dict:
     """
     Get available margin and fund details.
@@ -428,7 +445,7 @@ async def get_user_margin(ctx: Context = None) -> dict:
     except Exception as e:
         return format_response(error=format_error(str(e), "MarginFetchError"))
 
-@mcp.tool(name="account_get_holdings_list")
+@mcp_wrapped_tool(name="account_get_holdings_list", error_type="HoldingsFetchError")
 async def get_holdings_list(ctx: Context = None) -> dict:
     """
     Fetch a detailed list of all long-term equity holdings in the account.
@@ -442,7 +459,7 @@ async def get_holdings_list(ctx: Context = None) -> dict:
     except Exception as e:
         return format_response(error=format_error(str(e), "HoldingsFetchError"))
 
-@mcp.tool(name="account_get_positions_list")
+@mcp_wrapped_tool(name="account_get_positions_list", error_type="PositionsFetchError")
 async def get_positions_list(ctx: Context = None) -> dict:
     """
     Fetch a detailed list of all active intraday or short-term positions.
@@ -456,7 +473,7 @@ async def get_positions_list(ctx: Context = None) -> dict:
     except Exception as e:
          return format_response(error=format_error(str(e), "PositionsFetchError"))
 
-@mcp.tool(name="account_get_order_book")
+@mcp_wrapped_tool(name="account_get_order_book", error_type="OrderBookFetchError")
 async def get_order_book(ctx: Context = None) -> dict:
     """
     Fetch the list of all orders for the day.
@@ -470,7 +487,7 @@ async def get_order_book(ctx: Context = None) -> dict:
     except Exception as e:
          return format_response(error=format_error(str(e), "OrderBookFetchError"))
 
-@mcp.tool(name="account_get_trade_history")
+@mcp_wrapped_tool(name="account_get_trade_history", error_type="TradeHistoryFetchError")
 async def get_trade_history(ctx: Context = None) -> dict:
     """
     Fetch the list of all executions (trades) for the day.
