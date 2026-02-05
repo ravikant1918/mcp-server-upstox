@@ -11,6 +11,7 @@ dependencies = [
     "httpx>=0.28.1",
     "httpx-sse>=0.4.3",
     "upstox-python-sdk>=2.19.0",
+    "pytz>=2024.1",
     "pandas>=2.2.0",
     "pandas-ta==0.4.71b0",
     "numpy>=2.2.6",

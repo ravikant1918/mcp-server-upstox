@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-02-05
+
+### Added
+- **Professional Trading Enhancements**: Significantly enriched the tool suite for institutional-grade market analysis and session awareness.
+- **Market Intelligence & Session Awareness**: Added `resolve_market_time_and_calendar` to provide authoritative IST market status, holiday awareness, and precise date/time resolution for agents.
+- **Advanced Market Screener Engine**:
+    - `fetch_technical_screener`: Powerful real-time scanning for RSI (Oversold/Overbought) and MACD (Bullish) signals within the NIFTY 50 universe.
+    - `fetch_market_movers_and_trending_stocks_funds`: High-performance identification of top gainers, losers, and trending market assets.
+- **Deep Portfolio Analytics**:
+    - `get_equity_portfolio_holdings`: Comprehensive equity metrics including invested/current value and P&L snapshots.
+    - `get_my_trading_positions_today`: Streamlined intraday position tracking with real-time risk disclaimers.
+    - `get_specific_stock_position`: Targeted deep-dive into specific symbol performance and quantity metrics.
+- **High-Performance Infrastructure**: Integrated `pytz` for professional-grade time zone handling across all temporal operations.
+
+### Changed
+- **Unified Schema & Documentation**: Re-engineered all tool docstrings for maximum LLM performance, providing rich context and clear usage examples.
+- **Industrial-Strength LTP**: Upgraded `get_ltp` to support massive batch queries (up to 50 instruments) and enriched the output with critical F&O Open Interest (OI) metrics.
+
+### Fixed
+- **Architectural Cleanup**: Optimized `server.py` codebase, removing redundant logic and streamlining internal engine calls.
+
 ## [2.1.1] - 2026-02-02
 
 ### Optimized
@@ -12,8 +33,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Smart Instrument Caching**: Optimized `InstrumentEngine` to check memory before disk, significantly reducing I/O latency for symbol resolution.
 
 ### Changed
-- **Dynamic Credential Handling**: `UpstoxClient` now supports dynamic instantiation per-request.
-- **Tool Context Integration**: All MCP tools now utilize the `Context` object for credential extraction.
 - **Production hardening**: Introduced a shared `DEFAULT_EXECUTOR` to avoid creating a thread pool per client and reduce thread explosion under load.
 - **Instrument refresh safety**: `InstrumentEngine.refresh_if_needed` now uses an `asyncio.Lock` and performs atomic cache writes (tmp + os.replace) to prevent concurrent downloads and cache corruption.
 - **Error handling & observability**: Standardized MCP tool error handling via `mcp_wrapped_tool` and replaced `logger.error(...)` with `logger.exception(...)` to capture tracebacks and improve debuggability.

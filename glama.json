@@ -1,0 +1,8 @@
+{
+    "$schema": "https://glama.ai/mcp/schemas/server.json",
+    "name": "neurodev-mcp",
+    "description": "Professional-grade MCP server for Upstox with real-time market data, advanced technical indicators, and automated session awareness. Supports portfolios, screening, and deep analytics.",
+    "maintainers": [
+        "ravikant1918"
+    ]
+}
