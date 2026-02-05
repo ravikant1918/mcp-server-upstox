@@ -10,13 +10,17 @@ from upstock_mcp.config import config
 # Setup logging
 logger = logging.getLogger(__name__)
 
+# Shared executor to avoid creating an executor per client instance which
+# can lead to unbounded threads under load. Configurable via settings later.
+DEFAULT_EXECUTOR = ThreadPoolExecutor(max_workers=50, thread_name_prefix="upstox_worker")
+
 class UpstoxClient:
     """
     Async wrapper for official Upstox Python SDK.
     Since the SDK is synchronous, we use run_in_executor to avoid blocking the event loop.
     """
     
-    def __init__(self, access_token: Optional[str] = None, api_key: Optional[str] = None, api_secret: Optional[str] = None):
+    def __init__(self, access_token: Optional[str] = None, api_key: Optional[str] = None, api_secret: Optional[str] = None, executor: Optional[ThreadPoolExecutor] = None):
         # Configure OAuth2 access token for authorization: OAUTH2
         self.configuration = upstox_client.Configuration()
         self.configuration.access_token = access_token or config.UPSTOX_ACCESS_TOKEN
@@ -38,11 +42,24 @@ class UpstoxClient:
         self.order_api = upstox_client.OrderApi(self.api_client) # For read-only order history
         
         # Executor for sync calls
-        self.executor = ThreadPoolExecutor(max_workers=10)
+        # Use a shared default executor to avoid many pools being created under concurrency.
+        self.executor = executor or DEFAULT_EXECUTOR
 
     async def _run_sync(self, func, *args, **kwargs):
-        loop = asyncio.get_event_loop()
+        try:
+             loop = asyncio.get_running_loop()
+        except RuntimeError:
+             loop = asyncio.get_event_loop()
         return await loop.run_in_executor(self.executor, lambda: func(*args, **kwargs))
+
+    def _extract_response(self, response: Any) -> Any:
+        """
+        Helper to standardize response extraction.
+        Handles both SDK objects (with .data) and direct dicts.
+        """
+        if hasattr(response, 'data'):
+            return self._serialize_deep(response.data)
+        return self._serialize_deep(response)
 
     def _serialize_deep(self, data: Any) -> Any:
         """
@@ -80,10 +97,9 @@ class UpstoxClient:
                 instrument_key,
                 '2.0'
             )
-            # Use deep serialization to handle objects inside dicts (like MarketQuoteSymbolLtp)
-            return self._serialize_deep(response.data) if hasattr(response, 'data') else self._serialize_deep(response)
-        except ApiException as e:
-            logger.error(f"Upstox API Error (get_market_quote): {e}")
+            return self._extract_response(response)
+        except ApiException:
+            logger.exception("Upstox API Error (get_market_quote)")
             raise
 
     async def get_historical_candles(self, instrument_key: str, interval: str, 
@@ -93,8 +109,6 @@ class UpstoxClient:
         interval: 1minute, 30minute, day, week, month
         """
         try:
-             # SDK signature: get_historical_candle_data(instrument_key, interval, to_date, from_date, api_version)
-             # Note: SDK argument order might vary, checking standard generated code structure
              response = await self._run_sync(
                  self.history_api.get_historical_candle_data1,
                  instrument_key,
@@ -106,8 +120,8 @@ class UpstoxClient:
              if hasattr(response, 'data') and hasattr(response.data, 'candles'):
                  return response.data.candles
              return []
-        except ApiException as e:
-            logger.error(f"Upstox API Error (get_historical_candles): {e}")
+        except ApiException:
+            logger.exception("Upstox API Error (get_historical_candles)")
             raise
 
     async def get_intraday_candles(self, instrument_key: str, interval: str) -> List[List]:
@@ -124,8 +138,8 @@ class UpstoxClient:
             if hasattr(response, 'data') and hasattr(response.data, 'candles'):
                 return response.data.candles
             return []
-        except ApiException as e:
-            logger.error(f"Upstox API Error (get_intraday_candles): {e}")
+        except ApiException:
+            logger.exception("Upstox API Error (get_intraday_candles)")
             raise
 
     # ----------------------------------------------------------------
@@ -135,47 +149,47 @@ class UpstoxClient:
     async def get_profile(self) -> Dict:
         try:
             response = await self._run_sync(self.user_api.get_profile, '2.0')
-            return self._serialize_deep(response.data) if hasattr(response, 'data') else self._serialize_deep(response)
-        except ApiException as e:
-            logger.error(f"Upstox API Error (get_profile): {e}")
+            return self._extract_response(response)
+        except ApiException:
+            logger.exception("Upstox API Error (get_profile)")
             raise
 
     async def get_funds(self) -> Dict:
         try:
             response = await self._run_sync(self.user_api.get_user_fund_margin, '2.0')
-            return self._serialize_deep(response.data) if hasattr(response, 'data') else self._serialize_deep(response)
-        except ApiException as e:
-            logger.error(f"Upstox API Error (get_funds): {e}")
+            return self._extract_response(response)
+        except ApiException:
+            logger.exception("Upstox API Error (get_funds)")
             raise
 
     async def get_holdings(self) -> List[Dict]:
         try:
             response = await self._run_sync(self.portfolio_api.get_holdings, '2.0')
-            return self._serialize_deep(response.data) if hasattr(response, 'data') else self._serialize_deep(response)
-        except ApiException as e:
-            logger.error(f"Upstox API Error (get_holdings): {e}")
+            return self._extract_response(response)
+        except ApiException:
+            logger.exception("Upstox API Error (get_holdings)")
             raise
 
     async def get_positions(self) -> List[Dict]:
         try:
             response = await self._run_sync(self.portfolio_api.get_positions, '2.0')
-            return self._serialize_deep(response.data) if hasattr(response, 'data') else self._serialize_deep(response)
-        except ApiException as e:
-            logger.error(f"Upstox API Error (get_positions): {e}")
+            return self._extract_response(response)
+        except ApiException:
+            logger.exception("Upstox API Error (get_positions)")
             raise
     
     async def get_orders(self) -> List[Dict]:
         try:
             response = await self._run_sync(self.order_api.get_order_book, '2.0')
-            return self._serialize_deep(response.data) if hasattr(response, 'data') else self._serialize_deep(response)
-        except ApiException as e:
-            logger.error(f"Upstox API Error (get_orders): {e}")
+            return self._extract_response(response)
+        except ApiException:
+            logger.exception("Upstox API Error (get_orders)")
             raise
     
     async def get_trades(self) -> List[Dict]:
         try:
             response = await self._run_sync(self.order_api.get_trade_history, '2.0')
-            return self._serialize_deep(response.data) if hasattr(response, 'data') else self._serialize_deep(response)
-        except ApiException as e:
-            logger.error(f"Upstox API Error (get_trades): {e}")
+            return self._extract_response(response)
+        except ApiException:
+            logger.exception("Upstox API Error (get_trades)")
             raise

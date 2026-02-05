@@ -20,6 +20,13 @@ EXPOSE 8000
 # Set environment variables (defaults, can be overridden)
 ENV MCP_TRANSPORT=stdio
 
+# Create a non-root user and switch to it
+# Use a high UID to avoid conflicts with host system users
+RUN useradd -m -u 1000 appuser && \
+    chown -R appuser:appuser /app
+
+USER appuser
+
 # Default command to run the server in stdio mode for better registry compatibility
 ENTRYPOINT ["upstox-mcp"]
 CMD ["--transport", "stdio"]

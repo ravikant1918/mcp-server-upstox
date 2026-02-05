@@ -26,17 +26,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **Architectural Cleanup**: Optimized `server.py` codebase, removing redundant logic and streamlining internal engine calls.
 
+## [2.1.1] - 2026-02-02
 
-## [2.1.0] - 2026-01-27
+### Optimized
+- **Global Resource Management**: Implemented a global `ThreadPoolExecutor` to prevent resource exhaustion. Previously, a new thread pool was created for every request, leading to memory leaks.
+- **Smart Instrument Caching**: Optimized `InstrumentEngine` to check memory before disk, significantly reducing I/O latency for symbol resolution.
+
+### Changed
+- **Production hardening**: Introduced a shared `DEFAULT_EXECUTOR` to avoid creating a thread pool per client and reduce thread explosion under load.
+- **Instrument refresh safety**: `InstrumentEngine.refresh_if_needed` now uses an `asyncio.Lock` and performs atomic cache writes (tmp + os.replace) to prevent concurrent downloads and cache corruption.
+- **Error handling & observability**: Standardized MCP tool error handling via `mcp_wrapped_tool` and replaced `logger.error(...)` with `logger.exception(...)` to capture tracebacks and improve debuggability.
+- **Candle resampling fix**: `CandleEngine` now preserves timestamps as datetimes to enable correct resampling.
 
 ### Added
 - **Bring Your Own Key (BYOK) Support**: Users can now provide their own Upstox credentials via HTTP headers (`X-Upstox-API-Key`, `X-Upstox-API-Secret`, `X-Upstox-Access-Token`).
 - **Multi-User Architecture**: A single server deployment can now serve multiple users securely by using their individual keys.
 - **Enhanced Landing Page**: New interactive UI for connection instructions, including a dynamic JSON configuration generator and copy-to-clipboard feature.
-
-### Changed
-- **Dynamic Credential Handling**: `UpstoxClient` now supports dynamic instantiation per-request.
-- **Tool Context Integration**: All MCP tools now utilize the `Context` object for credential extraction.
+- **Tests & CI readiness**: Added unit tests and test scaffolding (including `tests/conftest.py`) covering candle conversion/resampling, config loading, instrument refresh concurrency, `UpstoxClient` exception paths, and the MCP tool wrapper.
 
 ## [2.0.0] - 2026-01-26
 
