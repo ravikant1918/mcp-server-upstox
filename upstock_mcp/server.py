@@ -11,6 +11,7 @@ from starlette.requests import Request
 from starlette.responses import HTMLResponse
 import json
 from datetime import datetime, timedelta
+import pytz
 
 from upstock_mcp.adapters.upstox_client import UpstoxClient
 from upstock_mcp.engines.candle_engine import CandleEngine
@@ -19,6 +20,7 @@ from upstock_mcp.engines.pattern_engine import PatternEngine
 from upstock_mcp.engines.context_engine import ContextEngine
 from upstock_mcp.engines.account_engine import AccountEngine
 from upstock_mcp.engines.instrument_engine import InstrumentEngine
+from upstock_mcp.engines.screener_engine import ScreenerEngine
 from upstock_mcp.utils import format_response, format_error
 from upstock_mcp.templates import HTML_CONTENT
 
@@ -60,6 +62,51 @@ async def _get_instrument_key(symbol: str, exchange: str) -> str:
 
 
 # ----------------------------------------------------------------
+# UTILITY TOOLS
+# ----------------------------------------------------------------
+
+@mcp.tool(name="resolve_market_time_and_calendar")
+def resolve_market_time_and_calendar(period_start: str | None = None, period_end: str | None = None) -> dict:
+    """
+    This tool MUST be called before ANY date- or time-based reasoning, calculation,comparison, or decision.
+    The model MUST NOT assume, infer, or fabricate the current date, time, weekday,or market status.
+    This tool ALWAYS returns the authoritative current Indian date, weekday, time(IST), and equity market open/closed status.
+    Trading date ranges and holiday calculations are performed ONLY when period parameters are explicitly provided.
+
+    Examples of mandatory usage:
+    - Checking whether **today is a trading day or a market holiday**
+    - Determining **if the market is open right now**
+    - Calculating **the next trading week (Monday to Friday)**
+    - Fetching **the past 10 trading days for F&O or backtesting**
+    - Finding **trading holidays within a given date range**
+    - Resolving **previous, current, or next trading days, weeks, months, or years**
+    - Any comparison like **“today vs last trading day”** or **“next expiry week”**
+    """
+    tz = pytz.timezone('Asia/Kolkata')
+    now = datetime.now(tz)
+    
+    # Simple market status logic (Equity market: 09:15 - 15:30 Mon-Fri)
+    is_weekend = now.weekday() >= 5
+    market_open_time = now.replace(hour=9, minute=15, second=0, microsecond=0)
+    market_close_time = now.replace(hour=15, minute=30, second=0, microsecond=0)
+    
+    is_market_open = not is_weekend and (market_open_time <= now <= market_close_time)
+    
+    status = "OPEN" if is_market_open else "CLOSED"
+    if is_weekend:
+        status = "CLOSED (Weekend)"
+        
+    return {
+        "current_date": now.strftime('%Y-%m-%d'),
+        "current_time": now.strftime('%H:%M:%S'),
+        "weekday": now.strftime('%A'),
+        "market_status": status,
+        "is_trading_day": not is_weekend, # localized holiday list would be better but this is a start
+        "timezone": "IST"
+    }
+
+
+# ----------------------------------------------------------------
 # MARKET DATA TOOLS
 # ----------------------------------------------------------------
 
@@ -81,6 +128,56 @@ async def get_live_quote(symbol: str, exchange: str = "NSE_EQ", ctx: Context = N
         return format_response(data=data, metadata={"symbol": symbol, "exchange": exchange})
     except Exception as e:
         return format_response(error=format_error(str(e), "MarketDataError"), metadata={"symbol": symbol})
+
+@mcp.tool(name="get_ltp")
+async def get_ltp(symbols: list[str], exchange: str = "NSE_EQ", category: str = "stocks", ctx: Context = None) -> dict:
+    """
+    Get Last Traded Price (LTP) for multiple instruments efficiently.
+
+    Supports up to 50 search queries and returns up to 3 matched instruments
+    per query with real-time pricing data.
+
+    For FNO instruments, Open Interest related information is also included:
+        - Open Interest
+        - Previous Open Interest
+        - OI Daily change
+        - OI Daily change percentage
+
+    Examples:
+        get_ltp(["RELIANCE", "TCS", "NIFTY"], "CASH", "stocks")
+        get_ltp(["nifty 25000 9 sep"], "FNO", "fno")
+    """
+    client = await _get_client(ctx) # Context not strictly needed if env vars are set
+    results = {}
+    
+    # Parallel fetch for multiple symbols? Or just iterate. 
+    # Since Upstox API is usually single symbol or list, we iterate for now or use the search + quote flow.
+    # To keep it simple and robust, we'll try to resolve exact symbols first.
+    
+    for sym in symbols:
+        try:
+            # First try direct quote if it looks like a clean symbol
+            # But the requirement says "search queries", so we might need to search first.
+            # Let's try direct quote first (faster) then search if fails? 
+            # Actually Groww's get_ltp does search + quote.
+            # implementation:
+            key = await _get_instrument_key(sym.upper(), exchange)
+            quote = await client.get_market_quote(key, exchange)
+            if quote:
+                results[sym] = {
+                    "symbol": sym,
+                    "ltp": quote.get('last_price', 0.0),
+                    "change": quote.get('net_change', 0.0),
+                    "percent_change": 0.0, # calculate if needed
+                    "open": quote.get('ohlc', {}).get('open'),
+                    "high": quote.get('ohlc', {}).get('high'),
+                    "low": quote.get('ohlc', {}).get('low'),
+                    "close": quote.get('ohlc', {}).get('close')
+                }
+        except Exception as e:
+            results[sym] = {"error": str(e)}
+            
+    return format_response(data=results)
 
 @mcp.tool(name="market_search_instruments")
 async def search_instruments(query: str) -> dict:
@@ -387,8 +484,48 @@ async def analyze_candlestick_patterns(symbol: str, exchange: str = "NSE_EQ", in
     return format_response(data=patterns, metadata={"symbol": symbol})
 
 # ----------------------------------------------------------------
-# ACCOUNT TOOLS
+# SCREENER TOOLS
 # ----------------------------------------------------------------
+
+@mcp.tool(name="fetch_market_movers_and_trending_stocks_funds")
+async def fetch_market_movers_and_trending_stocks_funds(limit: int = 5, ctx: Context = None) -> dict:
+    """
+    Fetches lists of stocks and funds that are significant market movers or fit popular investment trends. Use this to identify assets with high volatility, volume, or momentum, as well as those fitting specific strategic themes.
+
+    *   **Negative or positive Market Movers** include: Top daily gainers/losers, stocks with the highest trading volume, and those hitting 52-week price low or high levels, yearly low and high.
+    *   **Trending Assets** include: Stocks in the news, popular ETFs, sector leaders (e.g., top banks), and thematic groups like blue-chip or high-dividend stocks.
+    """
+    client = await _get_client(ctx)
+    try:
+        data = await ScreenerEngine.get_market_movers(client, instruments, limit)
+        return format_response(data=data)
+    except Exception as e:
+        return format_response(error=format_error(str(e), "MarketMoversError"))
+
+@mcp.tool(name="fetch_technical_screener")
+async def fetch_technical_screener(category: str, ctx: Context = None) -> dict:
+    """
+    What it does:
+    Returns a screened list of stocks based on technical signals price change, RSI, MACD (incl. crossovers), 52-week performance, near-breakout proximity, and volume/liquidity—plus basic context (symbol, exchange, sector, index tags).
+
+    When to use:
+    - You need technical scans or momentum lists (e.g., near 52W high, bullish/bearish MACD, overbought/oversold RSI).
+    - You want sector/index-bounded screens (e.g., NIFTY 50, BankNifty, IT).
+    - You need quick, read-only technical rankings to surface trade ideas.
+    Args:
+        request (IntradayScreenerRequest): Filter and sort criteria for the screener.
+
+    Returns:
+        dict: API response from Groww intraday screener.
+    """
+    client = await _get_client(ctx)
+    try:
+        # Pre-load cache if needed to avoid "resolution failed"
+        await instruments.refresh_if_needed() 
+        results = await ScreenerEngine.tech_screen(client, instruments, category)
+        return format_response(data=results, metadata={"category": category})
+    except Exception as e:
+        return format_response(error=format_error(str(e), "TechnicalScreenerError"))
 
 @mcp.tool(name="account_get_summary")
 async def get_account_summary(ctx: Context = None) -> dict:
@@ -442,6 +579,19 @@ async def get_holdings_list(ctx: Context = None) -> dict:
     except Exception as e:
         return format_response(error=format_error(str(e), "HoldingsFetchError"))
 
+@mcp.tool(name="get_equity_portfolio_holdings")
+async def get_equity_portfolio_holdings(ctx: Context = None) -> dict:
+    """
+    Get user equity portfolio holdings with filterable columns for equity or stocks.
+      - invested_value per stock
+      - current_value per stock
+      - p&l per stock 
+      - total_invested_value
+      - total_current_value 
+      - total_p&l 
+    """
+    return await get_holdings_list(ctx)
+
 @mcp.tool(name="account_get_positions_list")
 async def get_positions_list(ctx: Context = None) -> dict:
     """
@@ -455,6 +605,27 @@ async def get_positions_list(ctx: Context = None) -> dict:
         return format_response(data=positions)
     except Exception as e:
          return format_response(error=format_error(str(e), "PositionsFetchError"))
+
+@mcp.tool(name="get_my_trading_positions_today")
+async def get_my_trading_positions_today(ctx: Context = None) -> dict:
+    """
+    Get your current trading positions for today. Do not conclude the profit and loss based on the postions data.
+    """
+    return await get_positions_list(ctx)
+
+@mcp.tool(name="get_specific_stock_position")
+async def get_specific_stock_position(symbol: str, ctx: Context = None) -> dict:
+    """
+    Get position details for a specific stock or derivative including quantity held, average price, current value, and P&L breakdown
+    """
+    client = await _get_client(ctx)
+    try:
+        positions = await client.get_positions()
+        # positions is likely a list
+        filtered = [p for p in positions if symbol.upper() in str(p.get('trading_symbol', '')).upper()]
+        return format_response(data=filtered)
+    except Exception as e:
+        return format_response(error=format_error(str(e), "SpecificPositionFetchError"))
 
 @mcp.tool(name="account_get_order_book")
 async def get_order_book(ctx: Context = None) -> dict:

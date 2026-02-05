@@ -34,6 +34,7 @@ ENV/
 .idea/
 *.swp
 *.swo
+*grow*
 
 # MCP / Logs
 *.log
