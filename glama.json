@@ -4,5 +4,10 @@
     "description": "Professional-grade MCP server for Upstox with real-time market data, advanced technical indicators, and automated session awareness. Supports portfolios, screening, and deep analytics.",
     "maintainers": [
         "ravikant1918"
+    ],
+    "sourceUrl": "https://github.com/ravikant1918/mcp-server-upstox",
+    "relatedServers": [
+        "mcp-server-groww",
+        "mcp-server-zerodha"
     ]
 }

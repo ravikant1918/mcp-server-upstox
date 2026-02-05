@@ -13,6 +13,14 @@ from starlette.responses import HTMLResponse
 import json
 from datetime import datetime, timedelta
 import pytz
+import logging
+
+# Configure logging to stderr to avoid polluting stdout (critical for stdio transport)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    stream=sys.stderr
+)
 
 from upstock_mcp.adapters.upstox_client import UpstoxClient
 from upstock_mcp.engines.candle_engine import CandleEngine
@@ -81,9 +89,13 @@ instruments = InstrumentEngine()
 
 async def _get_instrument_key(symbol: str, exchange: str) -> str:
     """Helper to resolve symbol to key with lazy loading."""
-    await instruments.refresh_if_needed()
-    key = instruments.resolve(symbol, exchange)
-    return key if key else f"{exchange}|{symbol}"
+    try:
+        await instruments.refresh_if_needed()
+        key = instruments.resolve(symbol, exchange)
+        return key if key else f"{exchange}|{symbol}"
+    except Exception as e:
+        logger.warning("Instrument resolution failed: %s. Using default key.", str(e))
+        return f"{exchange}|{symbol}"
 
 
 # ----------------------------------------------------------------
