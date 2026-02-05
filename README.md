@@ -1,7 +1,7 @@
 # Upstox MCP Server: Global Model Context Protocol for Indian Equity Markets 📈
 
-<a href="https://glama.ai/mcp/servers/@ravikant1918/neurodev-mcp">
-  <img width="380" height="200" src="https://glama.ai/mcp/servers/@ravikant1918/neurodev-mcp/badge" />
+<a href="https://glama.ai/mcp/servers/@ravikant1918/mcp-server-upstox">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@ravikant1918/mcp-server-upstox/badge" />
 </a>
 
 [![GitHub Star](https://img.shields.io/github/stars/ravikant1918/mcp-server-upstox?style=social)](https://github.com/ravikant1918/mcp-server-upstox)
